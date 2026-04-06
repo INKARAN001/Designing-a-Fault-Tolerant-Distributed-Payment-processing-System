@@ -31,7 +31,10 @@ public final class PaymentServer {
     private PaymentServer() {
     }
 
-    public static Javalin createApp(String nodeId, String nodeUrl, List<String> allPeerUrls) {
+    /**
+     * @param serveStaticDashboard if true, serves {@code /public/index.html} at {@code /} (use for one node only in a process).
+     */
+    public static Javalin createApp(String nodeId, String nodeUrl, List<String> allPeerUrls, boolean serveStaticDashboard) {
         ReplicatedLedger replicated = new ReplicatedLedger();
         PaymentProcessor processor = new PaymentProcessor();
 
@@ -48,13 +51,39 @@ public final class PaymentServer {
                         System.Logger.Level.WARNING, "Node detected as failed: {0}", url));
         failureDetector.start();
 
-        Javalin app = Javalin.create();
+        Javalin app = Javalin.create(config -> {
+            if (serveStaticDashboard) {
+                config.staticFiles.add(staticFiles -> {
+                    staticFiles.hostedPath = "/";
+                    staticFiles.directory = "/public";
+                });
+            }
+        });
+
+        app.before(ctx -> {
+            ctx.header("Access-Control-Allow-Origin", "*");
+            ctx.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            ctx.header("Access-Control-Allow-Headers", "*");
+        });
+        app.options("/*", ctx -> ctx.status(204));
 
         app.get("/health", ctx -> {
             Map<String, Object> m = new HashMap<>();
             m.put("status", "ok");
             m.put("node_id", nodeId);
             m.put("is_leader", raft.isLeader());
+            ctx.json(m);
+        });
+
+        app.get("/cluster/status", ctx -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("node_id", nodeId);
+            m.put("node_url", normalize(nodeUrl));
+            m.put("is_leader", raft.isLeader());
+            m.put("all_nodes", new ArrayList<>(allPeerUrls));
+            m.put("alive_peers", failureDetector.alivePeers());
+            m.put("failed_peers", failureDetector.failedPeers());
+            m.put("ledger_entries", replicated.size());
             ctx.json(m);
         });
 
