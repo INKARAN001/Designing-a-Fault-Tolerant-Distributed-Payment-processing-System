@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cluster dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e7edf5;
+      --muted: #8b9cb3;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --bad: #f07178;
+      --accent: #6cb3f7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    header p {
+      margin: 0.35rem 0 0;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .toolbar label {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .toolbar input[type="text"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.45rem 0.65rem;
+      border-radius: 6px;
+      min-width: 220px;
+      font-size: 0.9rem;
+    }
+    .toolbar button {
+      background: var(--accent);
+      color: #0a1628;
+      border: none;
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .toolbar button:hover { filter: brightness(1.08); }
+    .status-line {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .status-line.error { color: var(--bad); }
+    main {
+      padding: 1.25rem 1.5rem 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+    }
+    .card h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .card .url {
+      font-size: 0.75rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+    }
+    .badge.leader { background: rgba(108, 179, 247, 0.25); color: var(--accent); }
+    .badge.follower { background: rgba(139, 156, 179, 0.2); color: var(--muted); }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      padding: 0.35rem 0;
+      border-top: 1px solid var(--border);
+    }
+    .row:first-of-type { border-top: none; }
+    .row span:last-child { color: var(--muted); text-align: right; }
+    .peer-list {
+      margin: 0.5rem 0 0;
+      padding-left: 1.1rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .peer-list.ok { color: var(--ok); }
+    .peer-list.fail { color: var(--bad); }
+    .empty-hint {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .actions {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      margin-bottom: 1.25rem;
+    }
+    .form-row {
+      margin-bottom: 0.75rem;
+    }
+    .form-row label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    .form-row input,
+    .form-row select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .form-actions button.secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--border);
+    }
+    .form-actions button.secondary:hover {
+      border-color: var(--accent);
+      filter: none;
+    }
+    .msg {
+      margin-top: 0.75rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.ok {
+      background: rgba(62, 207, 142, 0.12);
+      border: 1px solid rgba(62, 207, 142, 0.35);
+      color: var(--ok);
+    }
+    .msg.err {
+      background: rgba(240, 113, 120, 0.1);
+      border: 1px solid rgba(240, 113, 120, 0.35);
+      color: var(--bad);
+    }
+    .msg.muted-msg {
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      background: transparent;
+    }
+    .payments-table-wrap {
+      overflow-x: auto;
+      margin-top: 0.5rem;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    table.payments {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    table.payments th,
+    table.payments td {
+      text-align: left;
+      padding: 0.35rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    table.payments th { color: var(--muted); font-weight: 600; }
+    .status-pill {
+      text-transform: uppercase;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+    .status-pill.success { color: var(--ok); }
+    .status-pill.failed { color: var(--bad); }
+    .status-pill.pending { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Distributed payment cluster</h1>
+    <p>Live node health, Raft leader, payments, and transaction lookup.</p>
+  </header>
+  <div class="toolbar">
+    <div>
+      <label for="bases">Node base URLs (comma-separated)</label><br />
+      <input id="bases" type="text" value="http://127.0.0.1:5001,http://127.0.0.1:5002,http://127.0.0.1:5003" />
+    </div>
+    <button type="button" id="refresh">Refresh now</button>
+    <span class="status-line" id="pollStatus"></span>
+  </div>
+  <main>
+    <div class="actions">
+      <article class="card">
+        <h2>Make a payment</h2>
+        <p class="url" style="margin-top: -0.25rem; margin-bottom: 0.75rem">Submits to the Raft leader (auto-retries if you hit a follower).</p>
+        <div class="form-row">
+          <label for="payAmount">Amount</label>
+          <input id="payAmount" type="number" step="0.01" min="0" value="10.00" />
+        </div>
+        <div class="form-row">
+          <label for="payCurrency">Currency</label>
+          <input id="payCurrency" type="text" value="USD" maxlength="8" />
+        </div>
+        <div class="form-row">
+          <label for="payIdem">Idempotency key (optional)</label>
+          <input id="payIdem" type="text" placeholder="Reuse to get the same transaction id" />
+        </div>
+        <div class="form-actions">
+          <button type="button" id="submitPay">Submit payment</button>
+        </div>
+        <div id="payResult" class="msg muted-msg" hidden></div>
+      </article>
+      <article class="card">
+        <h2>Check payment status</h2>
+        <p class="url" style="margin-top: -0.25rem; margin-bottom: 0.75rem">Looks up <code>/payments/{id}</code> on your nodes.</p>
+        <div class="form-row">
+          <label for="txLookup">Transaction ID</label>
+          <input id="txLookup" type="text" placeholder="Paste transaction_id from a payment" />
+        </div>
+        <div class="form-actions">
+          <button type="button" id="lookupTx">Check status</button>
+        </div>
+        <div id="lookupResult" class="msg muted-msg" hidden></div>
+      </article>
+      <article class="card" style="grid-column: 1 / -1">
+        <h2>Recent payments <span class="badge follower" id="paymentsSource" style="font-size: 0.6rem">—</span></h2>
+        <div class="form-actions" style="margin-top: 0">
+          <button type="button" class="secondary" id="refreshPayments">Refresh list</button>
+        </div>
+        <div id="paymentsList" class="payments-table-wrap"></div>
+      </article>
+    </div>
+    <div class="grid" id="cards"></div>
+    <p class="empty-hint" id="hint" hidden>Open this page from a running node (e.g. <code>http://127.0.0.1:5001/</code>) after starting the cluster with <code>mvn exec:java</code>.</p>
+  </main>
+  <script>
+    const cardsEl = document.getElementById("cards");
+    const basesInput = document.getElementById("bases");
+    const pollStatus = document.getElementById("pollStatus");
+    const hint = document.getElementById("hint");
+    const refreshBtn = document.getElementById("refresh");
+    const submitPayBtn = document.getElementById("submitPay");
+    const lookupTxBtn = document.getElementById("lookupTx");
+    const refreshPaymentsBtn = document.getElementById("refreshPayments");
+    const payResult = document.getElementById("payResult");
+    const lookupResult = document.getElementById("lookupResult");
+    const paymentsList = document.getElementById("paymentsList");
+    const paymentsSource = document.getElementById("paymentsSource");
+
+    function parseBases() {
+      return basesInput.value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((u) => u.replace(/\/$/, ""));
+    }
+
+    async function fetchJson(url) {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status + " " + r.statusText);
+      return r.json();
+    }
+
+    async function fetchJsonAny(url, init) {
+      const opts = Object.assign({ cache: "no-store" }, init || {});
+      const r = await fetch(url, opts);
+      const text = await r.text();
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch (_) {
+        data = { _raw: text };
+      }
+      return { ok: r.ok, status: r.status, data };
+    }
+
+    function showMsg(el, type, text, show) {
+      el.hidden = !show;
+      el.className = "msg " + (type === "ok" ? "ok" : type === "err" ? "err" : "muted-msg");
+      el.textContent = text;
+    }
+
+    function statusPillClass(st) {
+      const s = String(st || "").toLowerCase();
+      if (s === "success") return "success";
+      if (s === "failed") return "failed";
+      return "pending";
+    }
+
+    async function postPay(base, payload) {
+      const root = base.replace(/\/$/, "");
+      const res = await fetchJsonAny(root + "/pay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return { root, ...res };
+    }
+
+    async function submitPaymentFlow() {
+      const amount = parseFloat(document.getElementById("payAmount").value);
+      const currency = document.getElementById("payCurrency").value.trim() || "USD";
+      const idem = document.getElementById("payIdem").value.trim();
+      if (Number.isNaN(amount) || amount < 0) {
+        showMsg(payResult, "err", "Enter a valid amount.", true);
+        return;
+      }
+      const payload = { amount, currency };
+      if (idem) payload.idempotency_key = idem;
+
+      showMsg(payResult, "muted", "Submitting…", true);
+      submitPayBtn.disabled = true;
+
+      const bases = parseBases();
+      const tried = new Set();
+      let current = bases[0] || null;
+      let lastErr = "No base URL configured.";
+
+      for (let hop = 0; hop < 8 && current; hop++) {
+        const norm = current.replace(/\/$/, "");
+        if (tried.has(norm)) {
+          const idx = bases.findIndex((b) => b.replace(/\/$/, "") === norm);
+          current = bases[idx + 1] ? bases[idx + 1].replace(/\/$/, "") : null;
+          continue;
+        }
+        tried.add(norm);
+
+        try {
+          const res = await postPay(norm, payload);
+          if (res.ok && res.status === 201 && res.data && res.data.transaction_id) {
+            const rec = res.data.record || {};
+            const st = rec.status || "?";
+            showMsg(
+              payResult,
+              "ok",
+              "Accepted\ntransaction_id: " +
+                res.data.transaction_id +
+                "\nstatus: " +
+                st +
+                "\namount: " +
+                (rec.amount != null ? rec.amount : amount) +
+                " " +
+                (rec.currency || currency),
+              true
+            );
+            document.getElementById("txLookup").value = res.data.transaction_id;
+            submitPayBtn.disabled = false;
+            loadPaymentsList();
+            return;
+          }
+          if (res.data && res.data.error === "not_leader" && res.data.retry_at) {
+            current = String(res.data.retry_at).replace(/\/$/, "");
+            lastErr = "Redirected to leader…";
+            continue;
+          }
+          lastErr =
+            (res.data && (res.data.message || res.data.error)) ||
+            res.status + " " + (res.data ? JSON.stringify(res.data) : "");
+          const idx = bases.indexOf(norm);
+          current = bases[idx + 1] ? bases[idx + 1].replace(/\/$/, "") : null;
+        } catch (e) {
+          lastErr = e.message || String(e);
+          const idx = bases.findIndex((b) => b.replace(/\/$/, "") === norm);
+          current = bases[idx + 1] ? bases[idx + 1].replace(/\/$/, "") : null;
+        }
+      }
+
+      showMsg(payResult, "err", "Payment failed.\n" + lastErr, true);
+      submitPayBtn.disabled = false;
+    }
+
+    async function lookupTransaction() {
+      const txId = document.getElementById("txLookup").value.trim();
+      if (!txId) {
+        showMsg(lookupResult, "err", "Enter a transaction ID.", true);
+        return;
+      }
+      showMsg(lookupResult, "muted", "Looking up…", true);
+      lookupTxBtn.disabled = true;
+
+      const bases = parseBases();
+      let lastErr = "Not found on any configured node.";
+      for (const base of bases) {
+        const root = base.replace(/\/$/, "");
+        try {
+          const res = await fetchJsonAny(
+            root + "/payments/" + encodeURIComponent(txId)
+          );
+          if (res.ok && res.data && !res.data.error) {
+            const d = res.data;
+            const lines = [
+              "status: " + (d.status || "—"),
+              "amount: " + d.amount + " " + (d.currency || ""),
+              "timestamp: " + d.timestamp,
+              "logical_index: " + d.logical_index,
+              "transaction_id: " + d.transaction_id,
+            ];
+            showMsg(lookupResult, "ok", lines.join("\n"), true);
+            lookupTxBtn.disabled = false;
+            return;
+          }
+          if (res.data && res.data.error) lastErr = res.data.error + " (" + root + ")";
+        } catch (e) {
+          lastErr = e.message || String(e);
+        }
+      }
+      showMsg(lookupResult, "err", lastErr, true);
+      lookupTxBtn.disabled = false;
+    }
+
+    async function loadPaymentsList() {
+      const bases = parseBases();
+      paymentsList.innerHTML = "";
+      paymentsSource.textContent = "—";
+      for (const base of bases) {
+        const root = base.replace(/\/$/, "");
+        try {
+          const res = await fetchJsonAny(root + "/payments?ordered=true");
+          if (!res.ok || !res.data || !Array.isArray(res.data.payments)) continue;
+          const rows = res.data.payments;
+          paymentsSource.textContent = root;
+          const tail = rows.slice(-25).reverse();
+          paymentsList.innerHTML =
+            "<table class=\"payments\"><thead><tr><th>ID</th><th>Amount</th><th>Status</th><th>Index</th></tr></thead><tbody>" +
+            tail
+              .map((p) => {
+                const id = escapeHtml(String(p.transaction_id || "").slice(0, 14)) + (String(p.transaction_id || "").length > 14 ? "…" : "");
+                const st = String(p.status || "");
+                return (
+                  "<tr><td title=\"" +
+                  escapeHtml(String(p.transaction_id || "")) +
+                  "\">" +
+                  id +
+                  "</td><td>" +
+                  escapeHtml(String(p.amount)) +
+                  " " +
+                  escapeHtml(String(p.currency || "")) +
+                  "</td><td><span class=\"status-pill " +
+                  statusPillClass(st) +
+                  "\">" +
+                  escapeHtml(st) +
+                  "</span></td><td>" +
+                  escapeHtml(String(p.logical_index ?? "—")) +
+                  "</td></tr>"
+                );
+              })
+              .join("") +
+            "</tbody></table>";
+          return;
+        } catch (_) {
+          /* try next */
+        }
+      }
+      paymentsList.innerHTML = "<p class=\"url\" style=\"padding:0.5rem 0\">Could not load /payments from any node.</p>";
+    }
+
+    function renderCard(base, data, err) {
+      if (err) {
+        return `
+          <article class="card">
+            <h2>${escapeHtml(base)}</h2>
+            <p class="url" style="color: var(--bad)">${escapeHtml(String(err))}</p>
+          </article>`;
+      }
+      const leader = data.is_leader === true;
+      const alive = data.alive_peers || [];
+      const failed = data.failed_peers || [];
+      const allNodes = data.all_nodes || [];
+      return `
+        <article class="card">
+          <h2>
+            ${escapeHtml(data.node_id || "?")}
+            <span class="badge ${leader ? "leader" : "follower"}">${leader ? "Leader" : "Follower"}</span>
+          </h2>
+          <div class="url">${escapeHtml(data.node_url || base)}</div>
+          <div class="row"><span>Ledger entries</span><span>${data.ledger_entries ?? "—"}</span></div>
+          <div class="row"><span>Cluster size</span><span>${allNodes.length}</span></div>
+          <div class="row"><span>Peers alive (detector)</span><span>${alive.length}</span></div>
+          <div class="row"><span>Peers failed</span><span>${failed.length}</span></div>
+          ${alive.length ? `<ul class="peer-list ok">${alive.map((u) => `<li>${escapeHtml(u)}</li>`).join("")}</ul>` : ""}
+          ${failed.length ? `<ul class="peer-list fail">${failed.map((u) => `<li>${escapeHtml(u)}</li>`).join("")}</ul>` : ""}
+        </article>`;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    let timer = null;
+
+    async function refresh() {
+      const bases = parseBases();
+      if (!bases.length) {
+        pollStatus.textContent = "Add at least one base URL.";
+        pollStatus.className = "status-line error";
+        return;
+      }
+      pollStatus.className = "status-line";
+      pollStatus.textContent = "Loading…";
+      const parts = await Promise.all(
+        bases.map(async (base) => {
+          try {
+            const data = await fetchJson(base + "/cluster/status");
+            return { base, data, err: null };
+          } catch (e) {
+            return { base, data: null, err: e.message || String(e) };
+          }
+        })
+      );
+      cardsEl.innerHTML = parts.map((p) => renderCard(p.base, p.data, p.err)).join("");
+      const anyOk = parts.some((p) => !p.err);
+      hint.hidden = anyOk;
+      const t = new Date().toLocaleTimeString();
+      pollStatus.textContent = "Updated " + t + " · auto every 2s";
+    }
+
+    function startPolling() {
+      if (timer) clearInterval(timer);
+      refresh();
+      timer = setInterval(refresh, 2000);
+    }
+
+    refreshBtn.addEventListener("click", () => startPolling());
+    basesInput.addEventListener("change", () => startPolling());
+    submitPayBtn.addEventListener("click", () => submitPaymentFlow());
+    lookupTxBtn.addEventListener("click", () => lookupTransaction());
+    refreshPaymentsBtn.addEventListener("click", () => loadPaymentsList());
+
+    startPolling();
+    loadPaymentsList();
+    setInterval(loadPaymentsList, 5000);
+  </script>
+</body>
+</html>
