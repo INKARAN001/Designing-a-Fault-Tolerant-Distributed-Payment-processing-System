@@ -1,0 +1,18 @@
+# Example cluster config (optional). Use CLI args for prototype.
+nodes:
+  - id: node0
+    host: localhost
+    port: 5001
+  - id: node1
+    host: localhost
+    port: 5002
+  - id: node2
+    host: localhost
+    port: 5003
+
+consensus:
+  election_timeout_ms: [150, 300]
+  heartbeat_interval_sec: 0.5
+
+replication:
+  quorum_size: 2
