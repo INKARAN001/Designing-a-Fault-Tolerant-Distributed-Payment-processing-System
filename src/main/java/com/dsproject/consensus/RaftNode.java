@@ -14,7 +14,6 @@ import java.util.function.Consumer;
 /**
  * Raft-style consensus (replaces Python {@code src/consensus/raft.py}).
  */
-@SuppressWarnings("unchecked")
 public class RaftNode {
 
     private final String nodeId;
@@ -29,6 +28,7 @@ public class RaftNode {
 
     private volatile double electionDeadlineSeconds;
     private volatile boolean running = true;
+    private volatile boolean active = true;
     private Thread electionThread;
     private Thread heartbeatThread;
 
@@ -58,10 +58,13 @@ public class RaftNode {
     private void electionLoop() {
         while (running) {
             try {
-                Thread.sleep(50);
+                Thread.sleep(20);
             } catch (InterruptedException ignored) {
             }
             synchronized (this) {
+                if (!active) {
+                    continue;
+                }
                 if (role == Role.LEADER) {
                     continue;
                 }
@@ -75,6 +78,9 @@ public class RaftNode {
     }
 
     private void startElection() {
+        if (!active) {
+            return;
+        }
         term++;
         votedFor = nodeId;
         role = Role.CANDIDATE;
@@ -83,6 +89,7 @@ public class RaftNode {
         int lastLogIndex = log.size() - 1;
         int lastLogTerm = log.isEmpty() ? 0 : log.get(log.size() - 1).getTerm();
 
+        int peersUnreachable = 0;
         for (String url : peerUrls) {
             Map<String, Object> body = new HashMap<>();
             body.put("term", term);
@@ -93,11 +100,32 @@ public class RaftNode {
             if (Boolean.TRUE.equals(res.get("vote_granted"))) {
                 votes++;
             }
+            if (res.isEmpty()) {
+                peersUnreachable++;
+            }
         }
 
-        if (role != Role.CANDIDATE || votes <= peerUrls.size() / 2) {
+        if (role != Role.CANDIDATE) {
             return;
         }
+        boolean majority = votes > peerUrls.size() / 2;
+        boolean loneSurvivorDemo = unsafeLoneLeaderEnabled()
+                && votes == 1
+                && !peerUrls.isEmpty()
+                && peersUnreachable == peerUrls.size();
+        if (!majority && !loneSurvivorDemo) {
+            return;
+        }
+        if (loneSurvivorDemo) {
+            System.getLogger(RaftNode.class.getName()).log(System.Logger.Level.WARNING,
+                    "UNSAFE demo mode: {0} became leader with no peer responses (no Raft quorum). "
+                            + "Set DS_UNSAFE_LONE_LEADER=0 to disable.",
+                    nodeId);
+        }
+        becomeLeader();
+    }
+
+    private void becomeLeader() {
         role = Role.LEADER;
         resetElectionTimer();
         if (heartbeatThread == null || !heartbeatThread.isAlive()) {
@@ -107,8 +135,29 @@ public class RaftNode {
         }
     }
 
+    /**
+     * When two peers are down, a real Raft cluster cannot elect a leader (no majority).
+     * For demos, allow the last reachable node to take leadership when all peer RPCs fail.
+     * Disable with {@code DS_UNSAFE_LONE_LEADER=0}.
+     */
+    private static boolean unsafeLoneLeaderEnabled() {
+        String v = System.getenv("DS_UNSAFE_LONE_LEADER");
+        if (v == null) {
+            return true;
+        }
+        return !"0".equals(v) && !"false".equalsIgnoreCase(v);
+    }
+
     private void heartbeatLoop() {
         while (running && role == Role.LEADER) {
+            if (!active) {
+                synchronized (this) {
+                    role = Role.FOLLOWER;
+                    votedFor = null;
+                    resetElectionTimer();
+                }
+                continue;
+            }
             try {
                 Thread.sleep((long) (Config.HEARTBEAT_INTERVAL_SEC * 1000));
             } catch (InterruptedException ignored) {
@@ -118,14 +167,15 @@ public class RaftNode {
     }
 
     private void broadcastAppendEntries() {
+        if (!active) {
+            return;
+        }
         Map<String, Object> payload;
         synchronized (this) {
             int prevIndex = log.size() - 1;
             int prevTerm = prevIndex >= 0 ? log.get(prevIndex).getTerm() : 0;
+            // Heartbeats carry no new entries; payload stays small (see broadcastAppendEntriesSync for replication).
             List<Map<String, Object>> entries = new ArrayList<>();
-            for (LogEntry e : log) {
-                entries.add(e.toMap());
-            }
             payload = new HashMap<>();
             payload.put("term", term);
             payload.put("leader_id", nodeId);
@@ -146,6 +196,9 @@ public class RaftNode {
     }
 
     public synchronized Map<String, Object> requestVote(int term, String candidateId, int lastLogIndex, int lastLogTerm) {
+        if (!active) {
+            return mapOf("term", this.term, "vote_granted", false);
+        }
         if (term < this.term) {
             return mapOf("term", this.term, "vote_granted", false);
         }
@@ -182,6 +235,9 @@ public class RaftNode {
             List<Map<String, Object>> entries,
             int leaderCommit
     ) {
+        if (!active) {
+            return mapOf("term", this.term, "success", false);
+        }
         if (term < this.term) {
             return mapOf("term", this.term, "success", false);
         }
@@ -228,20 +284,19 @@ public class RaftNode {
     }
 
     public synchronized boolean propose(Map<String, Object> data) {
-        if (role != Role.LEADER) {
+        if (!active || role != Role.LEADER) {
             return false;
         }
         int idx = log.size();
         log.add(new LogEntry(idx, term, data));
         broadcastAppendEntriesSync();
-        if (peerUrls.isEmpty()) {
-            commitIndex = log.size() - 1;
-            onCommit.accept(data);
-        }
         return true;
     }
 
     private void broadcastAppendEntriesSync() {
+        if (!active) {
+            return;
+        }
         int prevIndex = log.size() - 2;
         int prevTerm = prevIndex >= 0 ? log.get(prevIndex).getTerm() : 0;
         List<Map<String, Object>> entries = new ArrayList<>();
@@ -255,20 +310,40 @@ public class RaftNode {
         payload.put("leader_commit", commitIndex);
 
         int acks = 0;
+        int peersUnreachable = 0;
         for (String url : peerUrls) {
             Map<String, Object> res = HttpJson.postJson(url + "/raft/append-entries", payload, Duration.ofSeconds(1));
             if (Boolean.TRUE.equals(res.get("success"))) {
                 acks++;
             }
+            if (res.isEmpty()) {
+                peersUnreachable++;
+            }
         }
-        if (acks >= peerUrls.size() / 2) {
+        boolean quorum = acks >= peerUrls.size() / 2;
+        if (!quorum && unsafeLoneLeaderEnabled() && !peerUrls.isEmpty()
+                && peersUnreachable == peerUrls.size() && acks == 0) {
+            quorum = true;
+            System.getLogger(RaftNode.class.getName()).log(System.Logger.Level.WARNING,
+                    "UNSAFE demo mode: committing without follower acks (no quorum).");
+        }
+        if (quorum) {
             commitIndex = log.size() - 1;
             onCommit.accept(log.get(log.size() - 1).getData());
         }
     }
 
     public synchronized boolean isLeader() {
-        return role == Role.LEADER;
+        return active && role == Role.LEADER;
+    }
+
+    public synchronized void setActive(boolean active) {
+        this.active = active;
+        if (!active) {
+            role = Role.FOLLOWER;
+            votedFor = null;
+        }
+        resetElectionTimer();
     }
 
     public synchronized List<Map<String, Object>> getLogForReplication() {
