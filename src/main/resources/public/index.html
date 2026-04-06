@@ -4,42 +4,78 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cluster dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0f1419;
-      --surface: #1a2332;
-      --border: #2d3a4d;
-      --text: #e7edf5;
+      --bg: #0a0e14;
+      --bg-mid: #0f1623;
+      --surface: #141c2b;
+      --surface-2: #1a2438;
+      --border: #2a3a52;
+      --text: #eef3f9;
       --muted: #8b9cb3;
       --ok: #3ecf8e;
       --warn: #f0b429;
       --bad: #f07178;
       --accent: #6cb3f7;
+      --accent-dim: rgba(108, 179, 247, 0.12);
+      --glow: rgba(108, 179, 247, 0.15);
+      --radius: 14px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.25);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
+      font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(108, 179, 247, 0.12), transparent 50%),
+        radial-gradient(ellipse 80% 50% at 100% 50%, rgba(62, 207, 142, 0.06), transparent 45%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-mid) 100%);
       color: var(--text);
       line-height: 1.5;
+      overflow-x: hidden;
     }
     header {
-      padding: 1.25rem 1.5rem;
+      padding: 1.35rem 1.75rem 1.5rem;
       border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      background: linear-gradient(180deg, var(--surface) 0%, rgba(20, 28, 43, 0.92) 100%);
+      box-shadow: var(--shadow-sm);
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .header-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-dim), rgba(62, 207, 142, 0.08));
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+      flex-shrink: 0;
     }
     header h1 {
       margin: 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-      letter-spacing: -0.02em;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
     }
     header p {
-      margin: 0.35rem 0 0;
-      font-size: 0.875rem;
+      margin: 0.4rem 0 0;
+      font-size: 0.9rem;
       color: var(--muted);
+      max-width: 42rem;
     }
     .toolbar {
       display: flex;
@@ -48,55 +84,188 @@
       align-items: center;
       padding: 1rem 1.5rem;
       border-bottom: 1px solid var(--border);
+      background: rgba(10, 14, 20, 0.45);
+      backdrop-filter: blur(8px);
     }
     .toolbar label {
       font-size: 0.8rem;
       color: var(--muted);
     }
+    .toolbar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
     .toolbar input[type="text"] {
-      background: var(--surface);
+      background: var(--surface-2);
       border: 1px solid var(--border);
       color: var(--text);
-      padding: 0.45rem 0.65rem;
-      border-radius: 6px;
-      min-width: 220px;
-      font-size: 0.9rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      min-width: min(100%, 380px);
+      font-size: 0.875rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .toolbar input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
     }
     .toolbar button {
-      background: var(--accent);
-      color: #0a1628;
+      background: linear-gradient(135deg, #7eb8f5 0%, var(--accent) 100%);
+      color: #061018;
       border: none;
-      padding: 0.45rem 1rem;
-      border-radius: 6px;
+      padding: 0.5rem 1.15rem;
+      border-radius: 8px;
       font-weight: 600;
       cursor: pointer;
       font-size: 0.875rem;
+      font-family: inherit;
+      box-shadow: 0 2px 8px rgba(108, 179, 247, 0.25);
     }
-    .toolbar button:hover { filter: brightness(1.08); }
+    .toolbar button:hover { filter: brightness(1.06); transform: translateY(-1px); }
+    .toolbar button:active { transform: translateY(0); }
     .status-line {
       font-size: 0.8rem;
       color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .status-line::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--ok);
+      animation: pulse 2s ease-in-out infinite;
     }
     .status-line.error { color: var(--bad); }
-    main {
-      padding: 1.25rem 1.5rem 2rem;
+    .status-line.error::before { background: var(--bad); animation: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .stats-bar {
       max-width: 1200px;
       margin: 0 auto;
+      padding: 1rem 1.5rem 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.65rem;
     }
+    .stat-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .stat-value.stat-ok { color: var(--ok); }
+    .stat-value.stat-warn { color: var(--warn); }
+    .stat-value.stat-bad { color: var(--bad); }
+    main {
+      padding: 1rem 1.5rem 2.5rem;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin: 0 0 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-label::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+      max-width: 120px;
+    }
+    .section-block { margin-bottom: 1.35rem; }
     .grid {
       display: grid;
       gap: 1rem;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      align-items: start;
     }
     .card {
-      background: var(--surface);
+      background: linear-gradient(165deg, var(--surface) 0%, var(--surface-2) 100%);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1rem 1.1rem;
+      border-radius: var(--radius);
+      padding: 1.1rem 1.2rem;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), rgba(62, 207, 142, 0.6));
+      opacity: 0.85;
+    }
+    .card--wide::before {
+      background: linear-gradient(90deg, rgba(62, 207, 142, 0.5), var(--accent));
+    }
+    .card--node {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card--node:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+    .card--node-leader { border-color: rgba(108, 179, 247, 0.45); }
+    .card--node-leader::before {
+      background: linear-gradient(90deg, var(--accent), #9ccfff);
+    }
+    .card--node-follower::before {
+      background: linear-gradient(90deg, rgba(139, 156, 179, 0.4), rgba(139, 156, 179, 0.15));
+      opacity: 1;
+    }
+    .card--node-error {
+      border-color: rgba(240, 113, 120, 0.45);
+    }
+    .card--node-error::before {
+      background: linear-gradient(90deg, var(--bad), rgba(240, 113, 120, 0.3));
+    }
+    .card--node-crashed {
+      opacity: 0.92;
+      border-style: dashed;
     }
     .card h2 {
       margin: 0 0 0.75rem;
-      font-size: 0.95rem;
+      font-size: 0.98rem;
       font-weight: 600;
       display: flex;
       align-items: center;
@@ -165,8 +334,15 @@
       border: 1px solid var(--border);
       color: var(--text);
       padding: 0.5rem 0.65rem;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 0.9rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-row input:focus,
+    .form-row select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
     }
     .form-actions {
       display: flex;
@@ -174,14 +350,32 @@
       gap: 0.5rem;
       margin-top: 0.75rem;
     }
+    .form-actions button:not(.secondary) {
+      background: linear-gradient(135deg, #7eb8f5 0%, var(--accent) 100%);
+      color: #061018;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 2px 8px rgba(108, 179, 247, 0.2);
+    }
+    .form-actions button:not(.secondary):hover { filter: brightness(1.05); }
     .form-actions button.secondary {
       background: transparent;
       color: var(--accent);
       border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
     }
     .form-actions button.secondary:hover {
       border-color: var(--accent);
       filter: none;
+      background: var(--accent-dim);
     }
     .msg {
       margin-top: 0.75rem;
@@ -209,21 +403,43 @@
     .payments-table-wrap {
       overflow-x: auto;
       margin-top: 0.5rem;
-      max-height: 220px;
+      max-height: 280px;
       overflow-y: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(10, 14, 20, 0.35);
+    }
+    .payments-table-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+    .payments-table-wrap::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
     }
     table.payments {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.78rem;
     }
+    table.payments thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--surface-2);
+    }
     table.payments th,
     table.payments td {
       text-align: left;
-      padding: 0.35rem 0.5rem;
-      border-bottom: 1px solid var(--border);
+      padding: 0.45rem 0.65rem;
+      border-bottom: 1px solid rgba(42, 58, 82, 0.6);
     }
-    table.payments th { color: var(--muted); font-weight: 600; }
+    table.payments th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    table.payments tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+    table.payments tbody tr:hover { background: rgba(108, 179, 247, 0.06); }
     .status-pill {
       text-transform: uppercase;
       font-size: 0.65rem;
@@ -232,22 +448,112 @@
     .status-pill.success { color: var(--ok); }
     .status-pill.failed { color: var(--bad); }
     .status-pill.pending { color: var(--warn); }
+    .node-controls {
+      margin-top: 0.75rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .node-controls button {
+      border: none;
+      border-radius: 6px;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .node-controls .danger {
+      background: rgba(240, 113, 120, 0.16);
+      color: var(--bad);
+      border: 1px solid rgba(240, 113, 120, 0.45);
+    }
+    .node-controls .ok-btn {
+      background: rgba(62, 207, 142, 0.16);
+      color: var(--ok);
+      border: 1px solid rgba(62, 207, 142, 0.45);
+    }
+    .logs-wrap {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(10, 14, 20, 0.65) 0%, rgba(15, 22, 32, 0.85) 100%);
+      padding: 0.65rem 0.75rem;
+      font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+      font-size: 0.74rem;
+      line-height: 1.5;
+      border-left: 3px solid var(--accent);
+    }
+    .log-line {
+      padding: 0.2rem 0.1rem;
+      border-bottom: 1px dashed rgba(139, 156, 179, 0.2);
+      color: #dbe5f1;
+      word-break: break-word;
+    }
+    .log-line:last-child { border-bottom: none; }
+    .log-level-warn { color: var(--warn); }
+    .log-level-error { color: var(--bad); }
+    .node-alert {
+      margin-top: 0.65rem;
+      border: 1px solid rgba(240, 113, 120, 0.45);
+      background: rgba(240, 113, 120, 0.1);
+      color: #ffb8bd;
+      border-radius: 8px;
+      padding: 0.45rem 0.55rem;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .log-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-left: 0.25rem;
+    }
+    code {
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.85em;
+      background: rgba(108, 179, 247, 0.1);
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Distributed payment cluster</h1>
-    <p>Live node health, Raft leader, payments, and transaction lookup.</p>
+    <div class="header-inner">
+      <div class="header-icon" aria-hidden="true">⚡</div>
+      <div>
+        <h1>Distributed payment cluster</h1>
+        <p>Live node health, Raft leader, payments, and transaction lookup.</p>
+      </div>
+    </div>
   </header>
   <div class="toolbar">
-    <div>
-      <label for="bases">Node base URLs (comma-separated)</label><br />
-      <input id="bases" type="text" value="http://127.0.0.1:5001,http://127.0.0.1:5002,http://127.0.0.1:5003" />
+    <div class="toolbar-inner">
+      <div>
+        <label for="bases">Node base URLs (comma-separated)</label><br />
+        <input id="bases" type="text" value="http://localhost:5001,http://localhost:5002,http://localhost:5003" />
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.65rem;align-items:center">
+        <button type="button" id="refresh">Refresh now</button>
+        <label class="log-filter"><input type="checkbox" id="autoRefreshToggle" checked /> Auto-refresh</label>
+        <span class="status-line" id="pollStatus"></span>
+      </div>
     </div>
-    <button type="button" id="refresh">Refresh now</button>
-    <span class="status-line" id="pollStatus"></span>
+  </div>
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-pill"><span class="stat-label">Reachable</span><span class="stat-value" id="statReachable">—</span></div>
+    <div class="stat-pill"><span class="stat-label">Leaders</span><span class="stat-value stat-ok" id="statLeaders">—</span></div>
+    <div class="stat-pill"><span class="stat-label">Crashed (sim)</span><span class="stat-value" id="statCrashed">—</span></div>
+    <div class="stat-pill"><span class="stat-label">Failed peers</span><span class="stat-value" id="statFailedPeers">—</span></div>
   </div>
   <main>
+    <div class="section-block">
+      <p class="section-label">Operations</p>
     <div class="actions">
       <article class="card">
         <h2>Make a payment</h2>
@@ -281,16 +587,31 @@
         </div>
         <div id="lookupResult" class="msg muted-msg" hidden></div>
       </article>
-      <article class="card" style="grid-column: 1 / -1">
+    </div>
+    </div>
+    <div class="section-block">
+      <p class="section-label">Data &amp; observability</p>
+      <article class="card card--wide" style="grid-column: 1 / -1; margin-bottom: 1rem">
         <h2>Recent payments <span class="badge follower" id="paymentsSource" style="font-size: 0.6rem">—</span></h2>
         <div class="form-actions" style="margin-top: 0">
           <button type="button" class="secondary" id="refreshPayments">Refresh list</button>
         </div>
         <div id="paymentsList" class="payments-table-wrap"></div>
       </article>
+      <article class="card card--wide" style="grid-column: 1 / -1">
+        <h2>Live logs <span class="badge follower" id="logsSource" style="font-size: 0.6rem">—</span></h2>
+        <div class="form-actions" style="margin-top: 0">
+          <button type="button" class="secondary" id="refreshLogs">Refresh logs</button>
+          <label class="log-filter"><input type="checkbox" id="logsSinceAction" checked /> Since last crash/recover</label>
+        </div>
+        <div id="liveLogs" class="logs-wrap"></div>
+      </article>
     </div>
+    <div class="section-block">
+      <p class="section-label">Network nodes</p>
     <div class="grid" id="cards"></div>
-    <p class="empty-hint" id="hint" hidden>Open this page from a running node (e.g. <code>http://127.0.0.1:5001/</code>) after starting the cluster with <code>mvn exec:java</code>.</p>
+    </div>
+    <p class="empty-hint" id="hint" hidden>Open this page from a running node (e.g. <code>http://localhost:5001/</code>) after starting the cluster with <code>mvn exec:java</code>.</p>
   </main>
   <script>
     const cardsEl = document.getElementById("cards");
@@ -305,6 +626,12 @@
     const lookupResult = document.getElementById("lookupResult");
     const paymentsList = document.getElementById("paymentsList");
     const paymentsSource = document.getElementById("paymentsSource");
+    const refreshLogsBtn = document.getElementById("refreshLogs");
+    const logsSource = document.getElementById("logsSource");
+    const liveLogs = document.getElementById("liveLogs");
+    const autoRefreshToggle = document.getElementById("autoRefreshToggle");
+    const logsSinceAction = document.getElementById("logsSinceAction");
+    let lastControlActionTs = 0;
 
     function parseBases() {
       return basesInput.value
@@ -407,6 +734,30 @@
             loadPaymentsList();
             return;
           }
+          if (res.ok && res.status === 200 && res.data && res.data.status === "duplicate" && res.data.transaction_id) {
+            const rec = res.data.record || {};
+            showMsg(
+              payResult,
+              "ok",
+              "Duplicate (same idempotency key)\ntransaction_id: " +
+                res.data.transaction_id +
+                "\namount: " +
+                (rec.amount != null ? rec.amount : amount) +
+                " " +
+                (rec.currency || currency),
+              true
+            );
+            document.getElementById("txLookup").value = res.data.transaction_id;
+            submitPayBtn.disabled = false;
+            loadPaymentsList();
+            return;
+          }
+          if (res.data && res.data.error === "leader_unavailable") {
+            lastErr = "Forwarded payment could not reach leader; trying next node…";
+            const idx = bases.indexOf(norm);
+            current = bases[idx + 1] ? bases[idx + 1].replace(/\/$/, "") : null;
+            continue;
+          }
           if (res.data && res.data.error === "not_leader" && res.data.retry_at) {
             current = String(res.data.retry_at).replace(/\/$/, "");
             lastErr = "Redirected to leader…";
@@ -480,11 +831,15 @@
           paymentsSource.textContent = root;
           const tail = rows.slice(-25).reverse();
           paymentsList.innerHTML =
-            "<table class=\"payments\"><thead><tr><th>ID</th><th>Amount</th><th>Status</th><th>Index</th></tr></thead><tbody>" +
+            "<table class=\"payments\"><thead><tr><th>ID</th><th>Amount</th><th>Status</th><th>Ingress node</th><th>Processing node</th><th>Addressing node</th><th>Index</th></tr></thead><tbody>" +
             tail
               .map((p) => {
                 const id = escapeHtml(String(p.transaction_id || "").slice(0, 14)) + (String(p.transaction_id || "").length > 14 ? "…" : "");
                 const st = String(p.status || "");
+                const ingressNode =
+                  (p.metadata && p.metadata.ingress_node_url) || "—";
+                const processingNode =
+                  (p.metadata && p.metadata.processing_node_url) || "—";
                 return (
                   "<tr><td title=\"" +
                   escapeHtml(String(p.transaction_id || "")) +
@@ -499,6 +854,12 @@
                   "\">" +
                   escapeHtml(st) +
                   "</span></td><td>" +
+                  escapeHtml(String(ingressNode)) +
+                  "</td><td>" +
+                  escapeHtml(String(processingNode)) +
+                  "</td><td>" +
+                  escapeHtml(root) +
+                  "</td><td>" +
                   escapeHtml(String(p.logical_index ?? "—")) +
                   "</td></tr>"
                 );
@@ -513,31 +874,135 @@
       paymentsList.innerHTML = "<p class=\"url\" style=\"padding:0.5rem 0\">Could not load /payments from any node.</p>";
     }
 
+    function formatLogLine(ev) {
+      const ts = ev && ev.ts != null ? Number(ev.ts) : NaN;
+      const when = Number.isFinite(ts) ? new Date(ts * 1000).toLocaleTimeString() : "—";
+      const lvl = String((ev && ev.level) || "info").toLowerCase();
+      const msg = String((ev && ev.message) || "");
+      const node = String((ev && ev.node_id) || "");
+      const details = ev && ev.details ? JSON.stringify(ev.details) : "";
+      const from = ev && ev._log_from ? " @ " + String(ev._log_from).replace(/^https?:\/\//, "") : "";
+      return (
+        "<div class=\"log-line " + (lvl === "warn" ? "log-level-warn" : lvl === "error" ? "log-level-error" : "") + "\">[" +
+        escapeHtml(when) + "] [" + escapeHtml(lvl.toUpperCase()) + "] " + escapeHtml(node) + " - " + escapeHtml(msg) +
+        (details && details !== "{}" ? " | " + escapeHtml(details) : "") +
+        (from ? " <span style=\"opacity:0.65\">(" + escapeHtml(from.trim()) + ")</span>" : "") +
+        "</div>"
+      );
+    }
+
+    async function loadLogs() {
+      const bases = parseBases();
+      logsSource.textContent = "—";
+      const allEvents = [];
+      let okCount = 0;
+      await Promise.all(
+        bases.map(async (base) => {
+          const root = base.replace(/\/$/, "");
+          try {
+            const res = await fetchJsonAny(root + "/admin/logs?limit=120");
+            if (!res.ok || !res.data || !Array.isArray(res.data.events)) return;
+            okCount++;
+            for (const ev of res.data.events) {
+              const copy = Object.assign({}, ev);
+              copy._log_from = root;
+              allEvents.push(copy);
+            }
+          } catch (_) {
+            /* skip unreachable node */
+          }
+        })
+      );
+      if (okCount === 0) {
+        liveLogs.innerHTML =
+          "<div class=\"log-line log-level-error\">Could not load /admin/logs from any node.</div>";
+        return;
+      }
+      logsSource.textContent = "Merged · " + okCount + "/" + bases.length + " nodes";
+      allEvents.sort((a, b) => {
+        const ta = Number(a.ts) || 0;
+        const tb = Number(b.ts) || 0;
+        if (tb !== ta) return tb - ta;
+        return String(b.node_id || "").localeCompare(String(a.node_id || ""));
+      });
+      let filteredEvents = allEvents;
+      if (logsSinceAction && logsSinceAction.checked && lastControlActionTs > 0) {
+        // Keep logs from the last control action window to avoid stale confusion.
+        filteredEvents = allEvents.filter((ev) => (Number(ev.ts) || 0) >= (lastControlActionTs - 1));
+      }
+      const rows = filteredEvents.slice(0, 200);
+      if (!rows.length) {
+        liveLogs.innerHTML = "<div class=\"log-line\">No matching log events yet for current filter.</div>";
+        return;
+      }
+      liveLogs.innerHTML = rows.map((ev) => formatLogLine(ev)).join("");
+    }
+
+    async function controlNode(base, action) {
+      const root = base.replace(/\/$/, "");
+      const endpoint = action === "crash" ? "/admin/crash" : "/admin/recover";
+      const label = action === "crash" ? "Crashing" : "Recovering";
+      lastControlActionTs = Date.now() / 1000;
+      pollStatus.className = "status-line";
+      pollStatus.textContent = label + " " + root + "…";
+      try {
+        const res = await fetchJsonAny(root + endpoint, { method: "POST" });
+        if (!res.ok) {
+          const msg = (res.data && (res.data.message || res.data.error)) || ("HTTP " + res.status);
+          pollStatus.className = "status-line error";
+          pollStatus.textContent = "Control failed: " + msg;
+          return;
+        }
+        pollStatus.className = "status-line";
+        pollStatus.textContent = (action === "crash" ? "Crashed " : "Recovered ") + root;
+        await refresh();
+        await loadPaymentsList();
+        await loadLogs();
+      } catch (e) {
+        pollStatus.className = "status-line error";
+        pollStatus.textContent = "Control failed: " + (e.message || String(e));
+      }
+    }
+
     function renderCard(base, data, err) {
       if (err) {
         return `
-          <article class="card">
+          <article class="card card--node card--node-error">
             <h2>${escapeHtml(base)}</h2>
             <p class="url" style="color: var(--bad)">${escapeHtml(String(err))}</p>
+            <div class="node-controls">
+              <button type="button" class="danger" data-action="crash" data-base="${escapeHtml(base)}">Crash server</button>
+              <button type="button" class="ok-btn" data-action="recover" data-base="${escapeHtml(base)}">Recover server</button>
+            </div>
           </article>`;
       }
       const leader = data.is_leader === true;
       const alive = data.alive_peers || [];
       const failed = data.failed_peers || [];
       const allNodes = data.all_nodes || [];
+      const crashed = data.simulated_crash === true;
+      let nodeCardClass = "card card--node " + (leader ? "card--node-leader" : "card--node-follower");
+      if (crashed) nodeCardClass += " card--node-crashed";
       return `
-        <article class="card">
+        <article class="${nodeCardClass}">
           <h2>
             ${escapeHtml(data.node_id || "?")}
             <span class="badge ${leader ? "leader" : "follower"}">${leader ? "Leader" : "Follower"}</span>
+            ${crashed ? '<span class="badge follower" style="border:1px solid rgba(240,113,120,0.5)">Crashed</span>' : ""}
           </h2>
           <div class="url">${escapeHtml(data.node_url || base)}</div>
           <div class="row"><span>Ledger entries</span><span>${data.ledger_entries ?? "—"}</span></div>
           <div class="row"><span>Cluster size</span><span>${allNodes.length}</span></div>
           <div class="row"><span>Peers alive (detector)</span><span>${alive.length}</span></div>
           <div class="row"><span>Peers failed</span><span>${failed.length}</span></div>
+          <div class="row"><span>Simulated crash</span><span>${crashed ? "Yes" : "No"}</span></div>
+          ${crashed ? '<div class="node-alert">Crashed - cannot process payments</div>' : ""}
           ${alive.length ? `<ul class="peer-list ok">${alive.map((u) => `<li>${escapeHtml(u)}</li>`).join("")}</ul>` : ""}
           ${failed.length ? `<ul class="peer-list fail">${failed.map((u) => `<li>${escapeHtml(u)}</li>`).join("")}</ul>` : ""}
+          <div class="node-controls">
+            <button type="button" class="danger" data-action="crash" data-base="${escapeHtml(data.node_url || base)}">Crash server</button>
+            <button type="button" class="ok-btn" data-action="recover" data-base="${escapeHtml(data.node_url || base)}">Recover server</button>
+          </div>
         </article>`;
     }
 
@@ -550,16 +1015,52 @@
     }
 
     let timer = null;
+    let paymentsTimer = null;
+    let logsTimer = null;
+    let lastCardsHtml = "";
 
-    async function refresh() {
+    function updateClusterStats(parts) {
+      const total = parts.length;
+      const reachable = parts.filter((p) => !p.err).length;
+      const leaders = parts.filter((p) => !p.err && p.data && p.data.is_leader).length;
+      const crashed = parts.filter((p) => !p.err && p.data && p.data.simulated_crash).length;
+      let failedPeers = 0;
+      parts.forEach((p) => {
+        if (!p.err && p.data && Array.isArray(p.data.failed_peers)) {
+          failedPeers += p.data.failed_peers.length;
+        }
+      });
+      const elR = document.getElementById("statReachable");
+      const elL = document.getElementById("statLeaders");
+      const elC = document.getElementById("statCrashed");
+      const elF = document.getElementById("statFailedPeers");
+      if (elR) elR.textContent = reachable + "/" + total;
+      if (elL) {
+        elL.textContent = leaders;
+        elL.className =
+          "stat-value " + (leaders === 1 ? "stat-ok" : leaders === 0 ? "stat-bad" : "stat-warn");
+      }
+      if (elC) {
+        elC.textContent = crashed;
+        elC.className = "stat-value " + (crashed > 0 ? "stat-warn" : "");
+      }
+      if (elF) {
+        elF.textContent = failedPeers;
+        elF.className = "stat-value " + (failedPeers > 0 ? "stat-warn" : "");
+      }
+    }
+
+    async function refresh(silent = false) {
       const bases = parseBases();
       if (!bases.length) {
         pollStatus.textContent = "Add at least one base URL.";
         pollStatus.className = "status-line error";
         return;
       }
-      pollStatus.className = "status-line";
-      pollStatus.textContent = "Loading…";
+      if (!silent) {
+        pollStatus.className = "status-line";
+        pollStatus.textContent = "Loading…";
+      }
       const parts = await Promise.all(
         bases.map(async (base) => {
           try {
@@ -570,28 +1071,93 @@
           }
         })
       );
-      cardsEl.innerHTML = parts.map((p) => renderCard(p.base, p.data, p.err)).join("");
+      const nextCardsHtml = parts.map((p) => renderCard(p.base, p.data, p.err)).join("");
+      if (nextCardsHtml !== lastCardsHtml) {
+        cardsEl.innerHTML = nextCardsHtml;
+        lastCardsHtml = nextCardsHtml;
+      }
+      updateClusterStats(parts);
       const anyOk = parts.some((p) => !p.err);
       hint.hidden = anyOk;
       const t = new Date().toLocaleTimeString();
-      pollStatus.textContent = "Updated " + t + " · auto every 2s";
+      pollStatus.textContent = "Updated " + t + " · auto every 10s";
     }
 
     function startPolling() {
       if (timer) clearInterval(timer);
-      refresh();
-      timer = setInterval(refresh, 2000);
+      refresh(false);
+      timer = setInterval(() => refresh(true), 10000);
     }
 
-    refreshBtn.addEventListener("click", () => startPolling());
-    basesInput.addEventListener("change", () => startPolling());
+    function stopPolling() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    function startBackgroundLists() {
+      if (paymentsTimer) clearInterval(paymentsTimer);
+      if (logsTimer) clearInterval(logsTimer);
+      paymentsTimer = setInterval(loadPaymentsList, 5000);
+      logsTimer = setInterval(loadLogs, 2500);
+    }
+
+    function stopBackgroundLists() {
+      if (paymentsTimer) {
+        clearInterval(paymentsTimer);
+        paymentsTimer = null;
+      }
+      if (logsTimer) {
+        clearInterval(logsTimer);
+        logsTimer = null;
+      }
+    }
+
+    function applyAutoRefreshState() {
+      const enabled = !!(autoRefreshToggle && autoRefreshToggle.checked);
+      if (enabled) {
+        startPolling();
+        startBackgroundLists();
+        pollStatus.className = "status-line";
+      } else {
+        stopPolling();
+        stopBackgroundLists();
+        pollStatus.className = "status-line";
+        pollStatus.textContent = "Auto-refresh paused";
+      }
+    }
+
+    refreshBtn.addEventListener("click", async () => {
+      await refresh(false);
+      await loadPaymentsList();
+      await loadLogs();
+    });
+    basesInput.addEventListener("change", async () => {
+      await refresh(false);
+      await loadPaymentsList();
+      await loadLogs();
+      if (autoRefreshToggle && autoRefreshToggle.checked) {
+        startPolling();
+      }
+    });
+    autoRefreshToggle.addEventListener("change", () => applyAutoRefreshState());
     submitPayBtn.addEventListener("click", () => submitPaymentFlow());
     lookupTxBtn.addEventListener("click", () => lookupTransaction());
     refreshPaymentsBtn.addEventListener("click", () => loadPaymentsList());
+    refreshLogsBtn.addEventListener("click", () => loadLogs());
+    cardsEl.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action][data-base]");
+      if (!btn) return;
+      btn.disabled = true;
+      await controlNode(btn.dataset.base, btn.dataset.action);
+      btn.disabled = false;
+    });
 
     startPolling();
     loadPaymentsList();
-    setInterval(loadPaymentsList, 5000);
+    loadLogs();
+    startBackgroundLists();
   </script>
 </body>
 </html>
